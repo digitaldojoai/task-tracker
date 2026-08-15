@@ -1,8 +1,8 @@
-# Task Tracker API — Module 1
+# Task Tracker API
 
-A minimal FastAPI backend skeleton for the Module 1 Task Tracker learning project.
+A FastAPI backend for the Task Tracker learning project, extended in the Mid-Course Project with due dates/overdue filtering and tags. See [`../docs/midcourse/`](../docs/midcourse/) for that work.
 
-Per the architecture decision record, this module uses in-memory storage (no database), and the API surface is intentionally limited. This skeleton contains only application setup and a health check endpoint. Task CRUD endpoints, validation models, and the storage layer are added in later steps.
+This module uses in-memory storage (no database) — data resets whenever the server restarts. The API supports full task CRUD (`GET/POST /tasks`, `GET/PATCH/DELETE /tasks/{id}`), filterable by status, priority, overdue, and tag.
 
 ## Requirements
 
@@ -77,6 +77,14 @@ ReDoc: http://127.0.0.1:8000/redoc
 | `APP_ENV` | `development` | Environment name |
 
 The port is set with `uvicorn --port`, not via environment variable.
+
+## Tests
+
+With the virtual environment active, from `backend/`:
+
+```bash
+pytest
+```
 
 ## Notes on dependency versions
 

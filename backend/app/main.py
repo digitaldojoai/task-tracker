@@ -57,14 +57,15 @@ def list_tasks(
     return storage.get_all_tasks(status=status, priority=priority, overdue=overdue, tag=tag)
 
 
+def _task_not_found(task_id: str) -> HTTPException:
+    return HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
+
+
 @app.get("/tasks/{task_id}", response_model=TaskResponse, tags=["tasks"])
 def get_task(task_id: str) -> TaskResponse:
     task = storage.get_task_by_id(task_id)
     if task is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Task with id {task_id} not found",
-        )
+        raise _task_not_found(task_id)
     return task
 
 
@@ -77,10 +78,7 @@ def create_task(payload: TaskCreate) -> TaskResponse:
 def update_task(task_id: str, payload: TaskUpdate) -> TaskResponse:
     task = storage.update_task(task_id, payload)
     if task is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Task with id {task_id} not found",
-        )
+        raise _task_not_found(task_id)
     return task
 
 
@@ -88,7 +86,4 @@ def update_task(task_id: str, payload: TaskUpdate) -> TaskResponse:
 def delete_task(task_id: str) -> None:
     deleted = storage.delete_task(task_id)
     if not deleted:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Task with id {task_id} not found",
-        )
+        raise _task_not_found(task_id)
