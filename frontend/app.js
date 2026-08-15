@@ -5,6 +5,7 @@ const els = {
   board: document.querySelector(".board"),
   addBtn: document.getElementById("add-task-btn"),
   priorityFilter: document.getElementById("priority-filter"),
+  overdueFilter: document.getElementById("overdue-filter"),
   clearFiltersBtn: document.getElementById("clear-filters-btn"),
   errorBanner: document.getElementById("error-banner"),
   modalBackdrop: document.getElementById("modal-backdrop"),
@@ -16,6 +17,7 @@ const els = {
   fieldStatus: document.getElementById("field-status"),
   fieldPriority: document.getElementById("field-priority"),
   fieldAssignee: document.getElementById("field-assignee"),
+  fieldDueDate: document.getElementById("field-due-date"),
   formError: document.getElementById("form-error"),
   deleteBtn: document.getElementById("delete-btn"),
   cancelBtn: document.getElementById("cancel-btn"),
@@ -34,6 +36,7 @@ function clearError() {
 function buildQuery() {
   const params = new URLSearchParams();
   if (els.priorityFilter.value) params.set("priority", els.priorityFilter.value);
+  if (els.overdueFilter.checked) params.set("overdue", "true");
   return params.toString();
 }
 
@@ -67,6 +70,13 @@ function renderCard(task) {
     assigneePill.className = "pill";
     assigneePill.textContent = task.assignee;
     meta.appendChild(assigneePill);
+  }
+
+  if (task.due_date) {
+    const duePill = document.createElement("span");
+    duePill.className = task.overdue ? "pill pill-overdue" : "pill";
+    duePill.textContent = task.overdue ? `Overdue: ${task.due_date}` : `Due ${task.due_date}`;
+    meta.appendChild(duePill);
   }
 
   card.appendChild(meta);
@@ -118,6 +128,7 @@ function openModal(task) {
     els.fieldStatus.value = task.status;
     els.fieldPriority.value = task.priority;
     els.fieldAssignee.value = task.assignee || "";
+    els.fieldDueDate.value = task.due_date || "";
     els.deleteBtn.classList.remove("hidden");
   } else {
     els.modalTitle.textContent = "Add task";
@@ -142,6 +153,7 @@ function currentPayload() {
     status: els.fieldStatus.value,
     priority: els.fieldPriority.value,
     assignee: els.fieldAssignee.value || null,
+    due_date: els.fieldDueDate.value || null,
   };
 }
 
@@ -202,8 +214,10 @@ els.cancelBtn.addEventListener("click", closeModal);
 els.form.addEventListener("submit", submitForm);
 els.deleteBtn.addEventListener("click", deleteCurrentTask);
 els.priorityFilter.addEventListener("change", renderBoard);
+els.overdueFilter.addEventListener("change", renderBoard);
 els.clearFiltersBtn.addEventListener("click", () => {
   els.priorityFilter.value = "";
+  els.overdueFilter.checked = false;
   renderBoard();
 });
 els.modalBackdrop.addEventListener("click", (event) => {

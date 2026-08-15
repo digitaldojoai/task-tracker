@@ -19,6 +19,11 @@
       <option value="High">High</option>
     </select>
 
+    <label class="overdue-toggle">
+      <input type="checkbox" id="overdue-filter" />
+      Overdue only
+    </label>
+
     <button id="clear-filters-btn" class="btn btn-ghost">Clear filters</button>
   </section>
 
@@ -70,9 +75,15 @@
         </label>
       </div>
 
-      <label>Assignee
-        <input id="field-assignee" type="text" />
-      </label>
+      <div class="field-row">
+        <label>Assignee
+          <input id="field-assignee" type="text" />
+        </label>
+
+        <label>Due date
+          <input id="field-due-date" type="date" />
+        </label>
+      </div>
 
       <p id="form-error" class="form-error hidden"></p>
 

@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator
 
 
 class TaskStatus(str, Enum):
@@ -34,6 +34,7 @@ class TaskCreate(BaseModel):
     status: TaskStatus = TaskStatus.TODO
     priority: TaskPriority = TaskPriority.MEDIUM
     assignee: Optional[str] = None
+    due_date: Optional[date] = None
 
     @field_validator("title")
     @classmethod
@@ -49,6 +50,7 @@ class TaskUpdate(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     assignee: Optional[str] = None
+    due_date: Optional[date] = None
 
     @field_validator("title")
     @classmethod
@@ -67,5 +69,18 @@ class TaskResponse(BaseModel):
     status: TaskStatus
     priority: TaskPriority
     assignee: Optional[str]
+    due_date: Optional[date] = None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field
+    @property
+    def overdue(self) -> bool:
+        """A task is overdue if it has a due date in the past and isn't Done.
+
+        Computed at serialization time (not stored) so it stays correct as
+        the current date advances, without needing a background job.
+        """
+        if self.due_date is None or self.status == TaskStatus.DONE:
+            return False
+        return self.due_date < datetime.now(timezone.utc).date()
