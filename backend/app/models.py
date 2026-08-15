@@ -26,6 +26,26 @@ def _validate_title(value: str) -> str:
     return stripped
 
 
+MAX_TAGS = 10
+MAX_TAG_LENGTH = 30
+
+
+def _validate_tags(tags: Optional[list[str]]) -> Optional[list[str]]:
+    if tags is None:
+        return None
+    if len(tags) > MAX_TAGS:
+        raise ValueError(f"a task may have at most {MAX_TAGS} tags")
+    cleaned = []
+    for tag in tags:
+        stripped = tag.strip()
+        if not stripped:
+            raise ValueError("tags must not be blank")
+        if len(stripped) > MAX_TAG_LENGTH:
+            raise ValueError(f"tags must be at most {MAX_TAG_LENGTH} characters")
+        cleaned.append(stripped)
+    return cleaned
+
+
 class TaskCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -35,11 +55,17 @@ class TaskCreate(BaseModel):
     priority: TaskPriority = TaskPriority.MEDIUM
     assignee: Optional[str] = None
     due_date: Optional[date] = None
+    tags: list[str] = []
 
     @field_validator("title")
     @classmethod
     def validate_title(cls, value: str) -> str:
         return _validate_title(value)
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: list[str]) -> list[str]:
+        return _validate_tags(value) or []
 
 
 class TaskUpdate(BaseModel):
@@ -51,6 +77,12 @@ class TaskUpdate(BaseModel):
     priority: Optional[TaskPriority] = None
     assignee: Optional[str] = None
     due_date: Optional[date] = None
+    tags: Optional[list[str]] = None
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: Optional[list[str]]) -> Optional[list[str]]:
+        return _validate_tags(value)
 
     @field_validator("title")
     @classmethod
@@ -70,6 +102,7 @@ class TaskResponse(BaseModel):
     priority: TaskPriority
     assignee: Optional[str]
     due_date: Optional[date] = None
+    tags: list[str] = []
     created_at: datetime
     updated_at: datetime
 

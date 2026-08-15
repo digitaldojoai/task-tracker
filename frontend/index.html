@@ -19,6 +19,8 @@
       <option value="High">High</option>
     </select>
 
+    <input id="tag-filter" type="text" placeholder="Filter by tag..." />
+
     <label class="overdue-toggle">
       <input type="checkbox" id="overdue-filter" />
       Overdue only
@@ -84,6 +86,10 @@
           <input id="field-due-date" type="date" />
         </label>
       </div>
+
+      <label>Tags (comma-separated)
+        <input id="field-tags" type="text" placeholder="urgent, backend, bug" />
+      </label>
 
       <p id="form-error" class="form-error hidden"></p>
 
