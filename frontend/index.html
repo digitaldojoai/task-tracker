@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Task Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Task Tracker</h1>
+    <button id="add-task-btn" class="btn btn-primary">+ Add task</button>
+  </header>
+
+  <section class="filter-bar" id="filter-bar">
+    <select id="priority-filter">
+      <option value="">All priorities</option>
+      <option value="Low">Low</option>
+      <option value="Medium">Medium</option>
+      <option value="High">High</option>
+    </select>
+
+    <button id="clear-filters-btn" class="btn btn-ghost">Clear filters</button>
+  </section>
+
+  <div id="error-banner" class="error-banner hidden"></div>
+
+  <main class="board">
+    <section class="column" data-status="ToDo">
+      <h2>To Do <span class="count" id="count-ToDo">0</span></h2>
+      <div class="card-list" id="list-ToDo"></div>
+    </section>
+    <section class="column" data-status="InProgress">
+      <h2>In Progress <span class="count" id="count-InProgress">0</span></h2>
+      <div class="card-list" id="list-InProgress"></div>
+    </section>
+    <section class="column" data-status="Done">
+      <h2>Done <span class="count" id="count-Done">0</span></h2>
+      <div class="card-list" id="list-Done"></div>
+    </section>
+  </main>
+
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <form id="task-form" class="modal">
+      <h2 id="modal-title">Add task</h2>
+      <input type="hidden" id="task-id" />
+
+      <label>Title
+        <input id="field-title" type="text" maxlength="200" required />
+      </label>
+
+      <label>Description
+        <textarea id="field-description" rows="3"></textarea>
+      </label>
+
+      <div class="field-row">
+        <label>Status
+          <select id="field-status">
+            <option value="ToDo">To Do</option>
+            <option value="InProgress">In Progress</option>
+            <option value="Done">Done</option>
+          </select>
+        </label>
+
+        <label>Priority
+          <select id="field-priority">
+            <option value="Low">Low</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="High">High</option>
+          </select>
+        </label>
+      </div>
+
+      <label>Assignee
+        <input id="field-assignee" type="text" />
+      </label>
+
+      <p id="form-error" class="form-error hidden"></p>
+
+      <div class="modal-actions">
+        <button type="button" id="delete-btn" class="btn btn-danger hidden">Delete</button>
+        <div class="modal-actions-right">
+          <button type="button" id="cancel-btn" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
