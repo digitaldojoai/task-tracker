@@ -2,7 +2,7 @@ from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, computed_field, field_validator
+from pydantic import BaseModel, ConfigDict, computed_field, field_validator, model_validator
 
 
 class TaskStatus(str, Enum):
@@ -68,7 +68,20 @@ class TaskCreate(BaseModel):
         return _validate_tags(value) or []
 
 
+# Update fields that may legitimately be set to null (to clear them). Any other
+# field sent as an explicit null is rejected instead of being stored.
+NULLABLE_UPDATE_FIELDS = frozenset({"assignee", "due_date"})
+
+
 class TaskUpdate(BaseModel):
+    """Partial update payload.
+
+    Optional[...] here means "omit to leave unchanged", not "may be null".
+    Only ``assignee`` and ``due_date`` are genuinely nullable — sending null
+    for those clears the value. For every other field an explicit null is a
+    client error and is rejected with 422 rather than silently stored.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     title: Optional[str] = None
@@ -78,6 +91,23 @@ class TaskUpdate(BaseModel):
     assignee: Optional[str] = None
     due_date: Optional[date] = None
     tags: Optional[list[str]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_explicit_nulls(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        nulled = [
+            name
+            for name, value in data.items()
+            if value is None
+            and name in cls.model_fields
+            and name not in NULLABLE_UPDATE_FIELDS
+        ]
+        if nulled:
+            fields = ", ".join(sorted(nulled))
+            raise ValueError(f"{fields} must not be null; omit the field to leave it unchanged")
+        return data
 
     @field_validator("tags")
     @classmethod

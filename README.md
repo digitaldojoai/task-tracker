@@ -45,10 +45,11 @@ From `backend/`, with the virtual environment active:
 pytest
 ```
 
-31 tests: task model validation, baseline CRUD endpoints, due dates / overdue filtering, and tags.
+39 tests: task model validation, baseline CRUD endpoints, due dates / overdue filtering, tags, and explicit-null handling on partial updates.
 
 ## Features
 
 - **Task CRUD**: create, list (with status/priority filters), get, update, delete.
 - **Due dates + overdue filter**: optional due date per task; tasks overdue (past-due and not Done) are flagged on the board and can be filtered with `?overdue=true`.
 - **Tags**: optional tags per task (max 10, 30 chars each); tag chips on cards and a `?tag=` filter.
+- **Strict partial updates**: on `PATCH /tasks/{id}`, omitting a field leaves it unchanged, and an explicit `null` is rejected with `422` for every field except `assignee` and `due_date`, where null clears the value.

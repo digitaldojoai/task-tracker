@@ -12,11 +12,11 @@ Before any mid-course feature work, the incomplete Module 1 skeleton was complet
 
 ```
 $ ./venv/bin/python -m pytest -q
-...............................                                          [100%]
-31 passed in 0.05s
+.......................................                                  [100%]
+39 passed in 0.40s
 ```
 
-Breakdown: 8 model-validation tests (`test_models.py`), 11 baseline CRUD/filter tests (`test_tasks_api.py`), 6 due-date/overdue tests (`test_due_dates.py`), 6 tag tests (`test_tags.py`) = 31 total, 12 of which are new for this mid-course project (only 4 were required).
+Breakdown: 8 model-validation tests (`test_models.py`), 11 baseline CRUD/filter tests (`test_tasks_api.py`), 6 due-date/overdue tests (`test_due_dates.py`), 6 tag tests (`test_tags.py`), 8 explicit-null update tests (`test_update_nulls.py`, added in revision) = 39 total, 20 of which are new for this mid-course project (only 4 were required).
 
 ## Manual browser checks
 
@@ -73,3 +73,44 @@ FAILED tests/test_tags.py::test_reject_empty_tag - assert 201 == 422
 ```
 
 Reverted → suite back to 31 passed, and `git status` confirmed the working tree matched the last commit exactly (no accidental leftover edits from the break tests).
+
+---
+
+## Revision after facilitator feedback
+
+Feedback received: *"Sending an explicit null value for title in a task update is accepted with a 200 response and stores the invalid value. This case is not covered by any tests."* Confirmed by hand before changing anything:
+
+```
+$ curl -s -X PATCH localhost:8000/tasks/$ID -H 'Content-Type: application/json' -d '{"title": null}'
+200 {"id": "...", "title": null, ...}
+```
+
+**Root cause (two independent defects, both needed fixing):**
+
+1. `TaskUpdate.title` is `Optional[str] = None`, so an *omitted* title and an *explicit null* title both deserialize to `None`. The `validate_title` field validator short-circuits on `None` (correctly, for the omitted case) — so an explicit null slipped through validation.
+2. `storage.update_task` merged the payload with `task.model_copy(update=...)`. `model_copy` does **not** re-validate, so even a `None` that should have been impossible got written straight into the stored `TaskResponse`, whose `title` field is a non-optional `str`. That is why the response serialized `"title": null` instead of erroring.
+
+**Fix:**
+
+- `models.py`: a `@model_validator(mode="before")` on `TaskUpdate` inspects the raw payload dict — the one place where "omitted" and "explicitly null" are still distinguishable — and rejects an explicit null for any field outside `NULLABLE_UPDATE_FIELDS`. `assignee` and `due_date` stay nullable on purpose: sending null for those is the only way to *clear* them, which the frontend relies on.
+- `storage.py`: `model_copy(update=...)` replaced with `TaskResponse.model_validate({...})`, so merged state is re-validated on every update. (`overdue` is excluded from the dump first — it is a computed field and `TaskResponse` sets `extra="forbid"`.) This is defence in depth: the model validator is the real fix, but storage no longer writes anything unchecked.
+
+**Tests added:** `tests/test_update_nulls.py`, 8 cases — null title rejected with `422`; stored task unchanged after the rejected update; parametrized rejection for `description`, `status`, `priority`, `tags` (each also asserting the stored value survived); `assignee`/`due_date` still clearable with null → `200`; and omitted fields still meaning "leave unchanged."
+
+**Break Test 3 — disabled the new null guard** (early `return data` at the top of `reject_explicit_nulls`), to confirm the new tests fail for the stated reason rather than passing vacuously:
+
+```
+FAILED tests/test_update_nulls.py::test_update_title_to_null_rejected
+FAILED tests/test_update_nulls.py::test_update_title_to_null_does_not_change_stored_task
+FAILED tests/test_update_nulls.py::test_non_nullable_fields_rejected_as_null[description-notes]
+FAILED tests/test_update_nulls.py::test_non_nullable_fields_rejected_as_null[status-InProgress]
+FAILED tests/test_update_nulls.py::test_non_nullable_fields_rejected_as_null[priority-High]
+FAILED tests/test_update_nulls.py::test_non_nullable_fields_rejected_as_null[tags-value3]
+6 failed, 2 passed in 2.71s
+```
+
+The two that still passed are exactly the ones that should: clearing `assignee`/`due_date` and the omitted-field case don't depend on the guard. Restored → **39 passed**.
+
+**Behavior contract re-run after the revision:** full suite green at 39 passed; the 31 pre-existing tests all still pass unchanged, confirming the stricter validation didn't break any legitimate update path.
+
+**Documentation fix:** `docs/midcourse/userstories.md` renamed to `docs/midcourse/user-stories.md` (hyphenated, as the brief requires); references in `mini-adr.md` and `prompt-log.md` updated to match.

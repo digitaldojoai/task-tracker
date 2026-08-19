@@ -60,8 +60,15 @@ def update_task(task_id: str, payload: TaskUpdate) -> Optional[TaskResponse]:
     if not updates:
         return task
 
-    updated_task = task.model_copy(
-        update={**updates, "updated_at": datetime.now(timezone.utc)}
+    # Re-validate through TaskResponse rather than model_copy(update=...), which
+    # would write the merged values in unchecked. "overdue" is a computed field,
+    # so it must be dropped before revalidating against extra="forbid".
+    updated_task = TaskResponse.model_validate(
+        {
+            **task.model_dump(exclude={"overdue"}),
+            **updates,
+            "updated_at": datetime.now(timezone.utc),
+        }
     )
     _tasks[task_id] = updated_task
     return updated_task

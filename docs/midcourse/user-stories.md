@@ -59,4 +59,14 @@ As a user, I want to filter tasks by a single tag, so I can see only the work in
   - `GET /tasks?tag=backend` returns only tasks that have that tag.
   - Matching is case-insensitive (`Backend` matches a task tagged `backend`).
 
+**US-2.5 — Explicit null must not wipe out a field (added in revision)**
+As a user, I want a malformed update to be rejected rather than silently corrupting my task, so a buggy client can't leave a task with no title or no tags.
+- Acceptance criteria:
+  - `PATCH /tasks/{id}` with `{"title": null}` returns `422`, and the stored task is unchanged.
+  - The same applies to `description`, `status`, `priority`, and `tags`.
+  - `assignee` and `due_date` are the exceptions: explicit `null` clears them and returns `200`.
+  - Omitting a field entirely still means "leave unchanged."
+
 **AI assumption corrected:** the course brief suggested tags could be modeled "as a list or normalized comma-separated field." The AI's first instinct leaned toward storing a single comma-separated string internally (closer to the brief's second option), since it looked simpler. On review, this was rejected — a native list is simpler to validate per-tag (trim/reject-blank/max-length checks apply cleanly to each list item) and simpler to query for the tag filter. The comma-separated format was kept only at the frontend edge, where the modal's text input is split into a list before being sent to the API.
+
+**AI assumption corrected (revision):** `Optional[str] = None` on the update model was accepted at face value — from both the AI and my own review — as meaning "this field is optional in a PATCH." It actually means two different things at once: *omitted* and *explicitly null* both arrive as `None`, and only `exclude_unset=True` tells them apart. Because `storage.update_task` then merged with `model_copy(update=...)`, which skips validation entirely, a client sending `{"title": null}` got a `200` and a task with no title. See US-2.5 and `verification.md` for the fix and its Break Test.
