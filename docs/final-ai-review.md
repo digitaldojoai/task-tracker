@@ -125,21 +125,19 @@ decision with whoever maintains this next.
 
 ## Ownership statement
 
-I can explain every line that changed in this submission. The application code in
-`backend/app/` and `frontend/` is untouched by the final project — verified with
+I can explain every line that changed in this submission: `backend/app/` and
+`frontend/` are untouched — verified with
 `git diff --stat 305318e -- backend/app frontend` — so what I added is a
 Dockerfile, a `.dockerignore`, a CI workflow, `AGENTS.md`, and these evidence
-documents, each of which I can walk through decision by decision: why the
-container runs as UID 10001, why `--host 0.0.0.0` but never `--reload`, why the
-Python version in CI is pinned to `3.13` rather than `3.x`, and why the health
-check asserts on the status code instead of just printing it.
-
-Every factual claim in these documents was produced by running the command and
-pasting the real output, including the ones that were inconvenient: Docker is not
-installed on my machine, so I said so and moved that verification into CI rather
-than pasting a build log I never saw. Where AI was wrong I caught it by testing
-rather than by intuition, and where AI was right but out of scope I wrote the
-finding down instead of quietly editing protected code. The parts I am least
-certain about — the unbounded `description` field and the wide-open CORS policy —
-are named as open risks in this file rather than hidden. That is why I am
+documents, and I can justify each decision in them, from why the container runs
+as UID 10001 to why the CI Python version is pinned to `3.13` rather than `3.x`.
+Every factual claim in these documents came from running the command and pasting
+the real output, including the inconvenient ones — Docker is not installed on my
+machine, so I said so and moved that verification into CI instead of pasting a
+build log I never saw. Where AI was wrong I caught it by testing rather than by
+intuition, and where AI was right but out of scope I wrote the finding down
+instead of quietly editing protected code. The parts I am least certain about —
+the unbounded `description` field and the wide-open CORS policy — are named as
+open risks in this file rather than hidden. That combination of untouched
+application code, verified claims, and openly recorded doubts is why I am
 comfortable submitting this repository as my own work.
