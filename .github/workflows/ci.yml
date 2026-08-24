@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  tests:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          # Pinned to the same minor version used for local development.
+          python-version: "3.13"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run test suite
+        working-directory: backend
+        run: pytest -v
+
+  docker:
+    name: docker build and /health
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t task-tracker:ci .
+
+      - name: Run container
+        run: docker run -d --name task-tracker-ci -p 8000:8000 task-tracker:ci
+
+      - name: Verify /health returns HTTP 200
+        run: |
+          for attempt in $(seq 1 15); do
+            code=$(curl -s -o /tmp/health.json -w '%{http_code}' http://127.0.0.1:8000/health) && break
+            echo "attempt $attempt: container not answering yet"
+            sleep 2
+          done
+          echo "HTTP status: $code"
+          cat /tmp/health.json
+          test "$code" = "200"
+          grep -q '"status":"ok"' /tmp/health.json
+
+      - name: Verify container runs as a non-root user
+        run: |
+          uid=$(docker exec task-tracker-ci id -u)
+          echo "container UID: $uid"
+          test "$uid" != "0"
+
+      - name: Verify no .env was baked into the image
+        run: |
+          if docker exec task-tracker-ci sh -c 'ls -a /srv/.env /srv/app/.env' 2>/dev/null; then
+            echo "ERROR: an .env file is present inside the image"
+            exit 1
+          fi
+          echo "no .env file inside the image"
+
+      - name: Container logs
+        if: always()
+        run: docker logs task-tracker-ci
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f task-tracker-ci
