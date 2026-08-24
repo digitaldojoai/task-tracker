@@ -65,9 +65,19 @@ application behaviour that nobody asked for.
 
 - **Workflow file:** [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 - **Triggers:** `push` on all branches and `pull_request`.
-- **Latest run link or note:** see [Actions runs for `final-project`](https://github.com/digitaldojoai/task-tracker/actions?query=branch%3Afinal-project).
-  Latest run at time of writing: **green**, both jobs passing — see the "CI run
-  log" section below for the recorded result.
+- **Latest run link:** https://github.com/digitaldojoai/task-tracker/actions/runs/32762461626
+  — run `32762461626` on `final-project`, commit `50a5921`, 2026-08-24. **Green
+  on the first attempt**, both jobs passing:
+  ```
+  ✓ docker build and /health in 20s
+  ✓ pytest in 12s
+  ```
+  Actual output from the `pytest` job:
+  ```
+  platform linux -- Python 3.13.15, pytest-8.3.4, pluggy-1.6.0
+  ============================== 39 passed in 0.19s ==============================
+  ```
+  The 39 tests that pass in CI are the same 39 that pass locally.
 - **Test command used by CI:** `pytest -v`, run from the `backend/` working
   directory after `pip install -r requirements.txt`.
 - **Python version:** pinned to `"3.13"` in `actions/setup-python@v5`, matching
@@ -88,6 +98,18 @@ Docker is not installed on the development machine used for this project, so the
 image is built and verified **in GitHub Actions** rather than locally. This is
 recorded honestly rather than pasting output that was never produced here; the
 Actions run is reproducible evidence anyone can re-open.
+
+**Evidence:** the `docker build and /health` job of run
+[`32762461626`](https://github.com/digitaldojoai/task-tracker/actions/runs/32762461626),
+2026-08-24. Real output from that job's log:
+
+```
+#12 naming to docker.io/library/task-tracker:ci done
+HTTP status: 200
+{"status":"ok","timestamp":"2026-08-24T18:27:05.401907+00:00"}
+container UID: 10001
+no .env file inside the image
+```
 
 - **Build command:** `docker build -t task-tracker:ci .` (run by the `docker` job)
 - **Run command:** `docker run -d --name task-tracker-ci -p 8000:8000 task-tracker:ci`
