@@ -1,10 +1,9 @@
 # Keep secrets and local environment files out of the build context entirely.
 .env
 *.env
-!backend/.env.example
+!.env.example
 
 # Virtualenvs and caches (large, host-specific, never valid inside the image)
-backend/venv/
 venv/
 .venv/
 __pycache__/
@@ -20,7 +19,7 @@ htmlcov/
 .github/
 docs/
 frontend/
-backend/tests/
+tests/
 README.md
 AGENTS.md
 Dockerfile

@@ -1,6 +1,6 @@
-# Task Tracker API
+# Task Tracker API reference
 
-A FastAPI backend for the Task Tracker learning project, extended in the Mid-Course Project with due dates/overdue filtering and tags. See [`../docs/midcourse/`](../docs/midcourse/) for that work.
+A FastAPI backend for the Task Tracker learning project, extended in the Mid-Course Project with due dates/overdue filtering and tags. See [`midcourse/`](midcourse/) for that work.
 
 This module uses in-memory storage (no database) — data resets whenever the server restarts. The API supports full task CRUD (`GET/POST /tasks`, `GET/PATCH/DELETE /tasks/{id}`), filterable by status, priority, overdue, and tag.
 
@@ -10,7 +10,7 @@ This module uses in-memory storage (no database) — data resets whenever the se
 
 ## Setup
 
-All commands are run from the `backend/` directory.
+All commands are run from the repository root.
 
 Linux/macOS:
 
@@ -34,13 +34,13 @@ Copy-Item .env.example .env
 
 ## Run
 
-From `backend/`, with the virtual environment active:
+From the repository root, with the virtual environment active:
 
 ```bash
 uvicorn app.main:app --reload --port 8000
 ```
 
-`app.main:app` is an import path, not a file path. Uvicorn must be invoked from `backend/` so that the `app` package is importable. Running from the repository root fails with `ModuleNotFoundError: No module named 'app'`.
+`app.main:app` is an import path, not a file path. Uvicorn must be invoked from the repository root so that the `app` package is importable. Running from another directory fails with `ModuleNotFoundError: No module named 'app'`.
 
 `--reload` is for local development only.
 
@@ -80,7 +80,7 @@ The port is set with `uvicorn --port`, not via environment variable.
 
 ## Tests
 
-With the virtual environment active, from `backend/`:
+With the virtual environment active, from the repository root:
 
 ```bash
 pytest

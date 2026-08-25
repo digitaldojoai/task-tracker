@@ -5,27 +5,19 @@ A small FastAPI + vanilla JS Kanban-style task tracker, built for the AUB Assist
 ## Project layout
 
 ```
-backend/app/      FastAPI REST API (in-memory storage, no database)
-backend/tests/    pytest suite (39 tests)
-frontend/         Static HTML/CSS/JS Kanban board (no build tooling required)
-docs/             Project documentation: midcourse/ and final project evidence
+app/                       FastAPI REST API (in-memory storage, no database)
+tests/                     pytest suite (39 tests)
+frontend/                  Static HTML/CSS/JS Kanban board (no build tooling required)
+docs/                      Project documentation: midcourse/ and final project evidence
 .github/workflows/ci.yml   CI: pytest + Docker /health check
-Dockerfile        Container image for the API
-AGENTS.md         Working rules for AI assistants in this repo
+Dockerfile                 Container image for the API
+requirements.txt           Python dependencies
+AGENTS.md                  Working rules for AI assistants in this repo
 ```
-
-The final project brief refers to `app/` and `tests/` at the repository root. In
-this repo they live under `backend/`:
-
-| Brief refers to | Location here    |
-| --------------- | ---------------- |
-| `app/`          | `backend/app/`   |
-| `tests/`        | `backend/tests/` |
-| `frontend/`     | `frontend/`      |
 
 ## Run the backend
 
-From `backend/`:
+All commands run from the repository root:
 
 ```bash
 python3 -m venv venv
@@ -38,7 +30,7 @@ uvicorn app.main:app --reload --port 8000
 
 The API is served at http://127.0.0.1:8000. Interactive docs at http://127.0.0.1:8000/docs.
 
-See [`backend/README.md`](backend/README.md) for full details (Windows instructions, environment variables, etc.).
+See [`docs/backend-api.md`](docs/backend-api.md) for full details (Windows instructions, environment variables, etc.).
 
 ## Run the frontend
 
@@ -52,7 +44,7 @@ Then open http://127.0.0.1:5500 in a browser. (Any static file server works — 
 
 ## Run the tests
 
-From `backend/`, with the virtual environment active:
+From the repository root, with the virtual environment active:
 
 ```bash
 pytest
@@ -80,7 +72,7 @@ Branch reviewed: `final-project`
 
 ### How to run locally
 
-Backend, from `backend/`:
+Backend, from the repository root:
 
 ```bash
 python3 -m venv venv
@@ -101,7 +93,7 @@ Then open http://127.0.0.1:5500.
 
 ### How to run tests
 
-From `backend/`, with the virtualenv active:
+From the repository root, with the virtualenv active:
 
 ```bash
 pytest
@@ -120,7 +112,7 @@ docker rm -f task-tracker
 
 Expected: `HTTP/1.1 200 OK` with `{"status":"ok","timestamp":"..."}`.
 
-The image contains only `backend/app/` and its dependencies. `.env`, `venv/`, and
+The image contains only `app/` and its dependencies. `.env`, `venv/`, and
 the test suite are excluded by [`.dockerignore`](.dockerignore), and the container
 runs as the non-root user `appuser` (UID 10001).
 
@@ -135,7 +127,7 @@ runs as the non-root user `appuser` (UID 10001).
 
 AI helped draft or review: the CI workflow, the Dockerfile and `.dockerignore`,
 the final project documentation, and a read-only security pass over
-`backend/app/` and `frontend/app.js`.
+`app/` and `frontend/app.js`.
 
 I verified the work by: running `pytest` (39 passed), starting the API and
 checking `/health`, `POST/PATCH/DELETE /tasks`, the `?overdue=` and `?tag=`
@@ -143,10 +135,12 @@ filters and the 404/422 responses with `curl`, serving the frontend and
 confirming the board loads, reading every generated diff line by line, and
 requiring a green GitHub Actions run before treating CI and Docker as verified.
 
-One AI suggestion I rejected or corrected: AI proposed moving `backend/app/` and
-`backend/tests/` to the repository root so the layout matched the brief's example
-literally. I rejected it — relocating a working, already-graded application to
-satisfy a document is churn with real breakage risk (`uvicorn app.main:app` and
-the pytest imports both depend on the current layout), so I documented the
-mapping in this README and in `AGENTS.md` instead. Full details, plus the other
-suggestions I corrected, are in [`docs/final-ai-review.md`](docs/final-ai-review.md).
+One AI suggestion I rejected or corrected: AI reviewed the `update_task` code and
+argued that `model_dump(exclude={'overdue'})` was redundant, because Pydantic v2
+supposedly omits computed fields from `model_dump()`. Rather than take the
+explanation at face value I ran it — `"overdue" in task.model_dump()` returns
+`True`, and revalidating without the exclusion raises `ValidationError`. Applying
+that suggestion would have broken every `PATCH /tasks/{id}` request, so I
+rejected it and kept the existing code. Full details, plus the other suggestions
+I rejected, corrected, or deliberately declined to act on, are in
+[`docs/final-ai-review.md`](docs/final-ai-review.md).

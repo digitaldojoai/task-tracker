@@ -7,13 +7,13 @@
 - **Repo-specific stack and commands included:** yes — Python 3.13 / FastAPI /
   Pydantic v2 / pytest / vanilla JS, with the exact `uvicorn app.main:app`,
   `pytest`, `http.server 5500`, and `docker build`/`docker run` commands, plus
-  the note that uvicorn must be started from `backend/` or the `app` package is
-  not importable.
+  the note that uvicorn must be started from the repository root or the `app`
+  package is not importable.
 - **Docs-first / read-first guardrail included:** yes — "Read before you write"
   (read the file and its tests before proposing a diff), "Check the docs against
   the code" (update any doc a change makes false, in the same change), and
   "Verify, don't assert" (no reporting a test result that was not observed).
-- **Unexpected app/frontend edits rule included:** yes — `backend/app/` and
+- **Unexpected app/frontend edits rule included:** yes — `app/` and
   `frontend/` are protected; changes are limited to a small bug fix, security
   fix, or documented correction, must be explained in this file, and the banned
   feature list (comments, auth, real database, notifications, UI redesign) is
@@ -22,8 +22,8 @@
 ## AI code review mini-log
 
 **Diff reviewed:** commit `305318e`, "Implement strict null handling in task
-updates" — specifically `backend/app/models.py` (new `reject_explicit_nulls`
-model validator) and `backend/app/storage.py` (`update_task` re-validating
+updates" — specifically `app/models.py` (new `reject_explicit_nulls`
+model validator) and `app/storage.py` (`update_task` re-validating
 through `TaskResponse` instead of `model_copy`).
 
 | AI comment | Grade | Reason | Verification or decision |
@@ -36,16 +36,16 @@ through `TaskResponse` instead of `model_copy`).
 
 ## AI security mini-review
 
-Read-only pass over `backend/app/` and `frontend/app.js`. No files were changed
+Read-only pass over `app/` and `frontend/app.js`. No files were changed
 as a result of this review.
 
 | Finding | File evidence | Grade | Reason | Next action |
 |---|---|---|---|---|
-| CORS is fully open: `allow_origins=["*"]`, `allow_methods=["*"]`, `allow_headers=["*"]` — any website can call this API from a user's browser. | [`backend/app/main.py:33-38`](../backend/app/main.py) | **Valid** (low severity here) | The wildcard is real and deliberately permissive. Severity is low *in this scope only*: there is no authentication and no cookie/credential handling (`allow_credentials` is not enabled), so a hostile origin can reach an API that already has no private data to steal. It would be a genuine vulnerability the moment auth is added. | Documented and accepted for the course scope; recorded in `AGENTS.md` as a known, deliberate choice so no future assistant "fixes" it blindly. Tightening it belongs with an auth change, not before. |
+| CORS is fully open: `allow_origins=["*"]`, `allow_methods=["*"]`, `allow_headers=["*"]` — any website can call this API from a user's browser. | [`app/main.py:33-38`](../app/main.py) | **Valid** (low severity here) | The wildcard is real and deliberately permissive. Severity is low *in this scope only*: there is no authentication and no cookie/credential handling (`allow_credentials` is not enabled), so a hostile origin can reach an API that already has no private data to steal. It would be a genuine vulnerability the moment auth is added. | Documented and accepted for the course scope; recorded in `AGENTS.md` as a known, deliberate choice so no future assistant "fixes" it blindly. Tightening it belongs with an auth change, not before. |
 | `innerHTML` used in the frontend render path — potential XSS from task titles/tags. | [`frontend/app.js:109`](../frontend/app.js) | **False Positive** | The only `innerHTML` in the file is `list.innerHTML = ""` — assignment of a constant empty string to clear a column, which cannot inject anything. Every value that comes from the API is written with `textContent` via `document.createElement` (23 such uses in the file); there is no `insertAdjacentHTML`, `document.write`, or `eval` anywhere. | Verified with `grep -n "innerHTML\|eval(\|document.write\|insertAdjacentHTML" frontend/app.js` — one match, the empty-string clear. **No change.** A pattern-matching scanner flagged the sink without reading the assignment. |
-| Unbounded `description` field: `title` is capped at 200 characters and `tags` at 10 × 30, but `description` has no length limit, so a single request can push an arbitrarily large string into the in-memory store. | [`backend/app/models.py:20-26`](../backend/app/models.py) (`_validate_title`, the 200-character title cap) vs. `description: Optional[str] = ""` with no validator | **Valid** (low severity here) | Confirmed asymmetry, and the only unbounded user-controlled input in the app. Because storage is a process-local dict with no persistence and no auth, the realistic impact is memory growth in a local dev server, not a data breach. | Verified over HTTP: a 200,000-character description returns **201**, while a 300-character title correctly returns **422**. **Recorded, not fixed** — adding a cap changes protected `app/` validation behaviour that no requirement asks for. It is the first thing I would fix if this app were ever exposed beyond localhost. |
-| No authentication or rate limiting on any `/tasks` endpoint — anyone who can reach the port can read, edit, and delete every task. | [`backend/app/main.py`](../backend/app/main.py) (no dependencies, no auth middleware) | **Noise** | True but not a finding *for this repo*. "No authentication" is an explicit, documented scope decision for the course project, and the brief names authentication as an off-limits feature. Reporting a deliberate, documented constraint as a vulnerability is noise. | **No action.** Already stated in `AGENTS.md` under known-and-accepted items. |
-| Secrets could be baked into the Docker image via `.env` or the local `venv/`. | [`.dockerignore`](../.dockerignore), [`Dockerfile`](../Dockerfile) | **Valid as a risk, already mitigated** | A legitimate thing to check on a new Dockerfile. In this repo the build context excludes `.env`, `*.env`, and `backend/venv/`, and the `Dockerfile` copies only `backend/requirements.txt` and `backend/app`. | Turned into an enforced check rather than a claim: CI asserts at runtime that no `.env` exists inside the container, and that the container's UID is not 0. A future weakening of `.dockerignore` fails the build. |
+| Unbounded `description` field: `title` is capped at 200 characters and `tags` at 10 × 30, but `description` has no length limit, so a single request can push an arbitrarily large string into the in-memory store. | [`app/models.py:20-26`](../app/models.py) (`_validate_title`, the 200-character title cap) vs. `description: Optional[str] = ""` with no validator | **Valid** (low severity here) | Confirmed asymmetry, and the only unbounded user-controlled input in the app. Because storage is a process-local dict with no persistence and no auth, the realistic impact is memory growth in a local dev server, not a data breach. | Verified over HTTP: a 200,000-character description returns **201**, while a 300-character title correctly returns **422**. **Recorded, not fixed** — adding a cap changes protected `app/` validation behaviour that no requirement asks for. It is the first thing I would fix if this app were ever exposed beyond localhost. |
+| No authentication or rate limiting on any `/tasks` endpoint — anyone who can reach the port can read, edit, and delete every task. | [`app/main.py`](../app/main.py) (no dependencies, no auth middleware) | **Noise** | True but not a finding *for this repo*. "No authentication" is an explicit, documented scope decision for the course project, and the brief names authentication as an off-limits feature. Reporting a deliberate, documented constraint as a vulnerability is noise. | **No action.** Already stated in `AGENTS.md` under known-and-accepted items. |
+| Secrets could be baked into the Docker image via `.env` or the local `venv/`. | [`.dockerignore`](../.dockerignore), [`Dockerfile`](../Dockerfile) | **Valid as a risk, already mitigated** | A legitimate thing to check on a new Dockerfile. In this repo the build context excludes `.env`, `*.env`, and `venv/`, and the `Dockerfile` copies only `requirements.txt` and `app/`. | Turned into an enforced check rather than a claim: CI asserts at runtime that no `.env` exists inside the container, and that the container's UID is not 0. A future weakening of `.dockerignore` fails the build. |
 
 ## Manual security check
 
@@ -56,16 +56,16 @@ because a deleted secret still lives in git history. I checked the **full histor
 of every branch**:
 
 ```bash
-git log --all --oneline --name-only -- '*.env' 'backend/.env'   # no results
+git log --all --oneline --name-only -- '*.env'                   # no results
 git log --all -p | grep -iE "(api[_-]?key|secret|password|token|BEGIN .*PRIVATE KEY|sk-[A-Za-z0-9]{20}|ghp_[A-Za-z0-9]{20})"
-git ls-files | grep -i env                                       # backend/.env.example only
+git ls-files | grep -i env                                       # .env.example only
 ```
 
-**Result:** `backend/.env` has never been committed on any branch, no
+**Result:** no `.env` has ever been committed on any branch, no
 secret-shaped string appears in any commit's contents, and the only tracked env
-file is `backend/.env.example`, which contains a single non-sensitive line
-(`APP_ENV=development`). I also confirmed `.env` is ignored by both `.gitignore`
-and `backend/.gitignore`, so the untracked local file cannot be added by accident.
+file is `.env.example`, which contains a single non-sensitive line
+(`APP_ENV=development`). I also confirmed `.env` is ignored by `.gitignore`, so
+the untracked local file cannot be added by accident.
 
 **Why it matters:** the gitignore rules only protect the *future*. If a secret
 had ever been committed and later removed, the repository would still be leaking
@@ -81,15 +81,27 @@ problem without failing the job is the same as no check at all.
 
 Three, in order of how much they mattered.
 
-**1. Rejected: restructuring the repository to match the brief's example
-layout.** AI proposed moving `backend/app/` → `app/` and `backend/tests/` →
-`tests/` so the tree matched the brief's structure listing literally. I rejected
-it. The brief also says the first responsibility of the final project is to
-protect what already exists, and the move would have touched every import path,
-the uvicorn command, the pytest invocation, the Dockerfile, the CI workflow, and
-two READMEs — real breakage risk on an already-graded application, in exchange
-for cosmetic conformance. Instead I added an explicit mapping table to
-`README.md` and to `AGENTS.md` so a reader finds `app/` and `tests/` in one look.
+**1. Overruled the AI's recommendation on repository layout — and reversed my own
+first decision.** The brief lists `app/`, `frontend/`, and `tests/` at the
+repository root; mine were at `backend/app/` and `backend/tests/`, inherited from
+earlier modules. AI recommended *keeping* the existing layout and documenting a
+mapping table instead, arguing that moving graded, working code is churn and that
+the brief's own rule is to protect what already exists. I accepted that at first
+and wrote the mapping table.
+
+Then I re-read the submission checklist, which says in plain words to confirm the
+branch contains `app/`, `frontend/`, and `tests/`. A mapping table asks a grader
+to accept an explanation instead of seeing the thing. Since the checkpoint is
+pass/fail and a miss costs a resubmission, I overrode the recommendation and did
+the move — but on my terms: `git mv` only, so history is preserved, and **not one
+line inside `app/` or `frontend/` changed**. I verified that rather than assuming
+it (`git diff -M --stat 305318e` → 4 files changed, 0 insertions, 0 deletions,
+plus a per-file checksum comparison), then re-ran the full suite from the new
+root — `39 passed` — and confirmed `GET /health` still returns 200.
+
+The AI's reasoning was sound and I still agree with the principle. It was
+weighing "avoid churn" against "match the checklist" and could not weigh what the
+checklist costs me if it is wrong. That judgement was mine to make.
 
 **2. Rejected: the "redundant `exclude={'overdue'}`" review comment** in the code
 review log above. The suggestion was confidently argued and wrong. I did not
@@ -101,7 +113,7 @@ in the project of why "sounds right" is not a merge criterion.
 **3. Downgraded: two real findings, deliberately not fixed.** The
 `POST` vs `PATCH` null-`description` asymmetry and the unbounded `description`
 length are both genuine and both reproducible. I still declined to change
-`backend/app/`. Neither one breaks a documented promise — the README's null rule
+`app/`. Neither one breaks a documented promise — the README's null rule
 is written about `PATCH` and is accurate as written — and the ground rules limit
 `app/` changes to small bug fixes and security fixes. Editing validation
 behaviour on a working, graded application to satisfy a finding nobody asked me
@@ -125,9 +137,10 @@ decision with whoever maintains this next.
 
 ## Ownership statement
 
-I can explain every line that changed in this submission: `backend/app/` and
-`frontend/` are untouched — verified with
-`git diff --stat 305318e -- backend/app frontend` — so what I added is a
+I can explain every line that changed in this submission: `app/` and `frontend/`
+are untouched — they were moved to the repository root with `git mv`, and a
+rename-aware diff against `305318e` plus a per-file checksum comparison confirm
+every one is byte-identical — so what I added is a
 Dockerfile, a `.dockerignore`, a CI workflow, `AGENTS.md`, and these evidence
 documents, and I can justify each decision in them, from why the container runs
 as UID 10001 to why the CI Python version is pinned to `3.13` rather than `3.x`.

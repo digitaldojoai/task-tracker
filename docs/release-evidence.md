@@ -6,13 +6,15 @@ pasted as they were returned.
 ## Baseline
 
 - **Branch:** `final-project` (commit `305318e` at the time of the baseline run)
-- **Date:** 2026-08-24
+- **Date:** 2026-08-24 (baseline); re-verified 2026-08-25 after the repository
+  restructure described under "Scope check" below.
 - **Local app run command:**
   ```bash
-  cd backend
   source venv/bin/activate
   uvicorn app.main:app --port 8000
   ```
+  (Run from the repository root. Before the 2026-08-25 restructure this was run
+  from `backend/`; the command itself is unchanged.)
 - **/health result:** `curl -s -i http://127.0.0.1:8000/health`
   ```
   HTTP/1.1 200 OK
@@ -32,10 +34,11 @@ pasted as they were returned.
   modal still opens and saves.
 - **Test command:**
   ```bash
-  cd backend && ./venv/bin/python -m pytest -q
+  ./venv/bin/python -m pytest -q
   ```
 - **Test result:** `39 passed in 0.28s` — no failures, so nothing to record as
-  pre-existing or introduced.
+  pre-existing or introduced. Re-run from the repository root after the
+  restructure: `39 passed in 0.23s`, same 39 tests.
 
 ### Baseline API smoke test
 
@@ -54,9 +57,35 @@ Run with `curl` against the local server, beyond the test suite:
 
 ### Scope check
 
-`backend/app/` and `frontend/` were **not modified** during the final project.
-Confirmed with `git diff --stat 305318e -- backend/app frontend` (empty output).
-Two real findings in `backend/app/` were recorded in
+No application code was modified during the final project. The files did **move**
+on 2026-08-25 — `backend/app/` became `app/` and `backend/tests/` became `tests/`,
+so the repository matches the structure named in the submission checklist — but
+not one line inside them changed.
+
+Verified two ways. A rename-aware diff against the pre-final-project commit:
+
+```bash
+git diff -M --stat 305318e -- app frontend backend/app
+```
+```
+ {backend/app => app}/__init__.py | 0
+ {backend/app => app}/main.py     | 0
+ {backend/app => app}/models.py   | 0
+ {backend/app => app}/storage.py  | 0
+ 4 files changed, 0 insertions(+), 0 deletions(-)
+```
+
+Pure renames: zero insertions, zero deletions. And a direct checksum comparison of
+each file against its contents at `305318e`:
+
+```
+IDENTICAL  app/__init__.py        IDENTICAL  frontend/app.js
+IDENTICAL  app/main.py            IDENTICAL  frontend/index.html
+IDENTICAL  app/models.py          IDENTICAL  frontend/styles.css
+IDENTICAL  app/storage.py
+```
+
+Two real findings in `app/` were recorded in
 [`final-ai-review.md`](final-ai-review.md) and deliberately left unfixed, because
 neither breaks a documented promise and fixing them would mean changing protected
 application behaviour that nobody asked for.
@@ -78,8 +107,8 @@ application behaviour that nobody asked for.
   ============================== 39 passed in 0.19s ==============================
   ```
   The 39 tests that pass in CI are the same 39 that pass locally.
-- **Test command used by CI:** `pytest -v`, run from the `backend/` working
-  directory after `pip install -r requirements.txt`.
+- **Test command used by CI:** `pytest -v`, run from the repository root after
+  `pip install -r requirements.txt`.
 - **Python version:** pinned to `"3.13"` in `actions/setup-python@v5`, matching
   the local Python 3.13.7 used for development. Not `3.x`, not unspecified.
 - **Shortcut check:** the workflow contains no `continue-on-error`, no `|| true`,
@@ -124,8 +153,8 @@ no .env file inside the image
   sets `USER appuser`. CI asserts it at runtime with
   `docker exec task-tracker-ci id -u` and `test "$uid" != "0"`.
 - **No-baked-secrets check:** [`.dockerignore`](../.dockerignore) excludes `.env`,
-  `*.env`, `backend/venv/`, and all caches from the build context, and the
-  `Dockerfile` copies only `backend/requirements.txt` and `backend/app`. CI
+  `*.env`, `venv/`, and all caches from the build context, and the
+  `Dockerfile` copies only `requirements.txt` and `app/`. CI
   additionally asserts at runtime that no `.env` file exists inside the image.
 - **Runtime command:** `uvicorn app.main:app --host 0.0.0.0 --port 8000` — no
   `--reload` (a development-only flag), and `--host 0.0.0.0` so the published
@@ -148,11 +177,13 @@ not against memory.
 
 | Claim checked | Evidence used | Result | Change made, if any |
 |---|---|---|---|
-| README: "`pytest` … 39 tests" | Ran `./venv/bin/python -m pytest -q` from `backend/` | **True** — `39 passed in 0.28s` | None |
+| README: "`pytest` … 39 tests" | Ran `./venv/bin/python -m pytest -q` from the repository root | **True** — `39 passed` both before the restructure (0.28s) and after (0.23s) | None |
 | README: "`GET /health` returns 200 with `{"status":"ok", …}`" | `curl -s -i http://127.0.0.1:8000/health` against the local server | **True** — `HTTP/1.1 200 OK`, body `{"status":"ok","timestamp":"2026-08-24T18:17:42.790449+00:00"}` | None |
 | README: "an explicit `null` is rejected with `422` for every field except `assignee` and `due_date`, where null clears the value" (PATCH schema/status-code claim) | `curl -X PATCH` with `{"title":null}` → **422**; with `{"assignee":null}` → **200** | **True** as written (the claim is scoped to `PATCH`). Note: `POST /tasks` with `{"description":null}` returns **201**, so create and update differ — see `final-ai-review.md` | None to `app/`; the asymmetry is recorded as a finding |
 | README: "tags … and a `?tag=` filter" | `curl "…/tasks?tag=BASELINE"` for a task tagged `baseline` → 1 result | **True**, and the filter is case-insensitive (`storage.py` lowercases both sides) | Clarified in this log; behaviour was undocumented, not wrong |
-| README (root) project layout listed only `backend/`, `frontend/`, `docs/` | Compared against `git ls-files` after adding CI/Docker files | **Stale** — did not mention `Dockerfile`, `.dockerignore`, `.github/`, or `AGENTS.md`, and gave no mapping for the brief's `app/`/`tests/` | **Updated** the layout block in `README.md` and added the brief-to-repo path mapping table |
+| README (root) project layout listed only `backend/`, `frontend/`, `docs/` | Compared against `git ls-files` after adding CI/Docker files | **Stale** — did not mention `Dockerfile`, `.dockerignore`, `.github/`, or `AGENTS.md` | **Updated** the layout block in `README.md`, and later rewrote it again for the `app/`/`tests/` restructure |
 | CI claim: "pytest runs on push and pull request" | Read `.github/workflows/ci.yml`; confirmed green Actions run on `final-project` | **True** | None |
+| Restructure claim: "moving the folders changed no application code" | `git diff -M --stat 305318e -- app frontend backend/app` plus a per-file checksum comparison against `305318e` | **True** — 4 files changed, 0 insertions, 0 deletions; all 7 app/frontend files byte-identical | None |
+| README claim: "`uvicorn app.main:app` … from the repository root" (command claim, post-restructure) | Ran it from the root and called `GET /health` | **True** — `200` with `{"status":"ok","timestamp":"2026-08-25T06:55:19.157474+00:00"}` | None |
 | Docker claim: "no secrets are baked into the image" | Read `.dockerignore` + `Dockerfile`; CI asserts no `.env` inside the running container | **True** | None |
-| Repo claim: "no real secrets in the repository" | `git log --all --name-only -- '*.env'` (no results) and a regex scan of `git log --all -p` for key/token/password patterns (no results); `git ls-files \| grep -i env` returns only `backend/.env.example` | **True** — `backend/.env` has never been committed on any branch | None |
+| Repo claim: "no real secrets in the repository" | `git log --all --name-only -- '*.env'` (no results) and a regex scan of `git log --all -p` for key/token/password patterns (no results); `git ls-files \| grep -i env` returns only `.env.example` | **True** — no `.env` has ever been committed on any branch | None |
